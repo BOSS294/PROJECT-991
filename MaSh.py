@@ -61,6 +61,7 @@ def recognize_speech():
         try:
             # Convert speech to text
             text = r.recognize_google(audio)
+            text = text.lower() #to optimize the code
             return text
         except sr.UnknownValueError:
             print("Speech recognition could not understand audio.")
@@ -79,7 +80,7 @@ def speak_text(text):
 def handle_math():
     speak_text("Sure! You can provide a mathematical expression.")
     user_input = recognize_speech()
-    while user_input.lower() != "stop":
+    while user_input != "stop":
         try:
             result = eval(user_input)
             response = "The result is: " + str(result)
@@ -100,9 +101,9 @@ def handle_tasks():
     speak_text("Please provide a task to be completed or say 'stop' to pause tasks.")
     user_input = recognize_speech()
     is_on_youtube = False
-    while user_input.lower() != "stop":
-        if user_input.lower().startswith("open"):
-            website = user_input.lower().split("open", 1)[1].strip()
+    while user_input != "stop":
+        if user_input.startswith("open"):
+            website = user_input.split("open", 1)[1].strip()
             if website == "youtube":
                 url = "https://www.youtube.com"
                 webbrowser.get().open(url)
@@ -114,8 +115,8 @@ def handle_tasks():
                 speak_text("Opening Email...")
             else:
                 speak_text("Sorry, I don't know how to open that website.")
-        elif user_input.lower().startswith("search"):
-            query = user_input.lower().split("search", 1)[1].strip()
+        elif user_input.startswith("search"):
+            query = user_input.split("search", 1)[1].strip()
             if is_on_youtube:
                 url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}"
                 webbrowser.get().open(url)
@@ -140,16 +141,16 @@ def main():
         if not running:
 
             user_input = recognize_speech()
-            if user_input.lower() == "math":
+            if user_input == "math":
                 running = True
                 handle_math()
-            elif user_input.lower() == "speech":
+            elif user_input == "speech":
                 running = False
                 speak_text("Alright! I will continue processing speech input.")
-            elif user_input.lower() == "task":
+            elif user_input == "task":
                 running = False
                 handle_tasks()
-            elif user_input.lower() == "about":
+            elif user_input == "about":
                 running = False
                 desc_bot()
             else:
