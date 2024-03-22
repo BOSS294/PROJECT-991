@@ -6,7 +6,7 @@ from win10toast import *
 
 app = Flask(__name__)
 
-Build = "0.2"
+Build = "0.3"
 Name = "MaSh"
 datedon = "25/05/2023"
 # Initialize the recognizer
@@ -69,8 +69,8 @@ def recognize_speech():
         except sr.RequestError as e:
             print("Could not request results from Google Speech Recognition service; {0}".format(e))
 
-    # If an error occurred or no speech was recognized, return an empty string
-    return ""
+    # If an error occurred or no speech was recognized, return a keyword string to shutdown the AI
+    return "None"
 
 # Function to generate speech from text
 def speak_text(text):
@@ -177,7 +177,10 @@ if __name__ == "__main__":
     if user_input == "mash":
         activation_notif()
         main()
+    elif (user_input == "None"):      # Must be optimised in next build
+        speak_text("Sorry, an error occured, shutting down!.")
+        deactivation_notif()
     else:
-        speak_text("Sorry, I didn't understand. Please say 'mash' to begin.")
+        speak_text("Sorry, I didn't understand. Please say 'MaSh' to activate me.")
 
     
