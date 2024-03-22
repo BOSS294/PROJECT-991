@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 import speech_recognition as sr
 import pyttsx3
 import webbrowser
+from win10toast import *
 
 app = Flask(__name__)
 
@@ -131,9 +132,21 @@ def handle_tasks():
 
     speak_text("Paused task processing.")
 
+
+# Function to display a notification when the AI is activated
+def activation_notif():
+    n = ToastNotifier()
+    n.show_toast("MaSh", "MaSh is now activated and ready to work on your command", duration=10)
+
+# will be used later on.
+def deactivation_notif():
+    n = ToastNotifier()
+    n.show_toast("MaSh", "MaSh is now deactivated and unable to work until launched again", duration=10)
+
+
 # Main function
 def main():
-    starting = "Hello, my name is MaSh! I can perform various tasks. Say 'math' for math calculations, 'speech' for regular speech processing, or 'task' to assign me a new task."
+    starting = f"Hello, my name is {Name}! I can perform various tasks. Say 'math' for math calculations, 'speech' for regular speech processing, or 'task' to assign me a new task."
     speak_text(starting)
     print(starting)
     running = False
@@ -162,7 +175,9 @@ if __name__ == "__main__":
     user_input = recognize_speech()
 
     if user_input == "mash":
+        activation_notif()
         main()
     else:
         speak_text("Sorry, I didn't understand. Please say 'mash' to begin.")
+
     
