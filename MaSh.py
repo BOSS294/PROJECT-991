@@ -5,7 +5,7 @@ import webbrowser
 
 app = Flask(__name__)
 
-Build = "0.01"
+Build = "0.2"
 Name = "MaSh"
 datedon = "25/05/2023"
 # Initialize the recognizer
@@ -158,4 +158,11 @@ def main():
 
 # Run the main function
 if __name__ == "__main__":
-    main()
+
+    user_input = recognize_speech()
+
+    if user_input == "mash":
+        main()
+    else:
+        speak_text("Sorry, I didn't understand. Please say 'mash' to begin.")
+    
