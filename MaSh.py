@@ -2,10 +2,11 @@ from flask import Flask, render_template, request
 import speech_recognition as sr
 import pyttsx3
 import webbrowser
+from win10toast import *
 
 app = Flask(__name__)
 
-Build = "0.01"
+Build = "0.3"
 Name = "MaSh"
 datedon = "25/05/2023"
 # Initialize the recognizer
@@ -68,8 +69,8 @@ def recognize_speech():
         except sr.RequestError as e:
             print("Could not request results from Google Speech Recognition service; {0}".format(e))
 
-    # If an error occurred or no speech was recognized, return an empty string
-    return ""
+    # If an error occurred or no speech was recognized, return a keyword string to shutdown the AI
+    return "None"
 
 # Function to generate speech from text
 def speak_text(text):
@@ -131,9 +132,21 @@ def handle_tasks():
 
     speak_text("Paused task processing.")
 
+
+# Function to display a notification when the AI is activated
+def activation_notif():
+    n = ToastNotifier()
+    n.show_toast("MaSh", "MaSh is now activated and ready to work on your command", duration=10)
+
+# will be used later on.
+def deactivation_notif():
+    n = ToastNotifier()
+    n.show_toast("MaSh", "MaSh is now deactivated and unable to work until launched again", duration=10)
+
+
 # Main function
 def main():
-    starting = "Hello, my name is MaSh! I can perform various tasks. Say 'math' for math calculations, 'speech' for regular speech processing, or 'task' to assign me a new task."
+    starting = f"Hello, my name is {Name}! I can perform various tasks. Say 'math' for math calculations, 'speech' for regular speech processing, or 'task' to assign me a new task."
     speak_text(starting)
     print(starting)
     running = False
@@ -158,4 +171,16 @@ def main():
 
 # Run the main function
 if __name__ == "__main__":
-    main()
+
+    user_input = recognize_speech()
+
+    if user_input == "mash":
+        activation_notif()
+        main()
+    elif (user_input == "None"):      # Must be optimised in next build
+        speak_text("Sorry, an error occured, shutting down!.")
+        deactivation_notif()
+    else:
+        speak_text("Sorry, I didn't understand. Please say 'MaSh' to activate me.")
+
+    
