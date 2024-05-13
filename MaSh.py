@@ -1,186 +1,358 @@
-from flask import Flask, render_template, request
-import speech_recognition as sr
 import pyttsx3
-import webbrowser
-from win10toast import *
+import speech_recognition as sr
+import random
+import time
+import psutil
+import re
+import datetime
+from plyer import notification
 
-app = Flask(__name__)
+# Function to change voice of the assistant
+def change_voice():
+    engine = pyttsx3.init()
+    voices = engine.getProperty('voices')
+    # Change index to choose a different voice
+    engine.setProperty('voice', voices[1].id)
+    return engine
 
-Build = "0.3"
-Name = "MaSh"
-datedon = "25/05/2023"
-# Initialize the recognizer
-r = sr.Recognizer()
+welcome_message1= [
+    "Welcome back, sir. It's great to have you here!",
+    "Hey there! Welcome back, my friend.",
+    "Good day, sir! Your presence always brightens my day.",
+    "Hello! It's a pleasure to see you again.",
+    "Welcome back Sir! Your visit is always appreciated.",
+    "Hi there! I hope you're ready for some delightful conversation.",
+    "Greetings, sir! Your return brings joy to this place.",
+    "Ahoy! Welcome back, captain. Smooth sailing ahead!",
+    "Salutations Sir! Your presence makes this place feel like home.",
+    "Welcome back, Sir! Your company is cherished here."
+]
 
-# Initialize the text-to-speech engine
-engine = pyttsx3.init()
+# Function to create notifications
+def create_notification(title, message, timeout=5):
+    notification.notify(
+        title=title,
+        message=message,
+        timeout=timeout
+    )
 
-# Get available voices
-voices = engine.getProperty('voices')
+def process_user_query(user_input):
+    if "battery" in user_input.lower():
+        return get_battery_percentage()
+    elif "cpu" in user_input.lower():
+        return get_cpu_usage()
+    elif "system information" in user_input.lower():
+        return get_system_info()
+    elif "date" in user_input.lower():
+        return get_date()
+    elif "time" in user_input.lower():
+        return get_time()
+    elif any(question in user_input.lower() for question, _ in casual_talks):
+        return get_random_casual_talk()
+    else:
+        return get_ai_response(user_input)
 
-# Set the voice (change the index according to the desired voice)
-engine.setProperty('voice', voices[0].id)
-#Function to describe the AI
-def desc_bot():
-    say = f"My name is {Name} i was created on {datedon} and my build is {Build}. I have no feelings yet"
-    speak_text(say)
 
-# Route for the home page
-@app.route('/')
-def index():
-    return render_template('index.html')
+def get_time():
+    current_time = datetime.datetime.now().strftime("%H:%M")
 
-# Route to process the AI logic
-@app.route('/process', methods=['POST'])
-def process():
-    # Get the speech input from the frontend
-    speech = request.form['speech']
+    return f"The current time is {current_time}."
 
-    # Perform speech recognition
-    text = recognize_speech(speech)
+def get_date():
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    return f"Today's date is {current_date}."
 
-    # Perform AI processing based on the recognized text
-    # Add your AI logic and code here
+def get_battery_percentage():
+    try:
+        battery_percentage = psutil.sensors_battery().percent
+        return f"Your current battery percentage is {battery_percentage}%."
+    except Exception as e:
+        return f"Sorry, I couldn't retrieve the battery information. Error: {e}"
+
+def get_cpu_usage():
+    try:
+        cpu_usage = psutil.cpu_percent(interval=1)
+        return f"Your current CPU usage is {cpu_usage}%."
+    except Exception as e:
+        return f"Sorry, I couldn't retrieve the CPU information. Error: {e}"
+
+def get_appreciation_response(user_input):
+    appreciation_keywords = ["very good", "good job", "well done", "nice work", "impressive", "good"]
+
+    for keyword in appreciation_keywords:
+        if keyword in user_input.lower():
+            # Return a random thank you response
+            thank_you_responses = [
+                "Thank you, sir!",
+                "I appreciate your kind words.",
+                "It's my pleasure to assist you!",
+                "Thank you for your appreciation!",
+                "I'm here to help. Thank you!",
+            ]
+            return random.choice(thank_you_responses)
+
+    # If no specific appreciation, return None
+    return None
+
+
+def get_system_info():
+    try:
+        # Get CPU usage
+        cpu_usage = psutil.cpu_percent(interval=1)
+        cpu_info = f"Your current CPU usage is {cpu_usage}%."
+
+        # Get memory usage
+        memory_info = psutil.virtual_memory()
+        memory_used = memory_info.used / (1024 ** 3)  # Convert to gigabytes
+        memory_total = memory_info.total / (1024 ** 3)  # Convert to gigabytes
+        memory_usage = f"Your current memory usage is {memory_used:.2f} GB out of {memory_total:.2f} GB."
+
+        # Get disk usage
+        disk_info = psutil.disk_usage("/")
+        disk_used = disk_info.used / (1024 ** 3)  # Convert to gigabytes
+        disk_total = disk_info.total / (1024 ** 3)  # Convert to gigabytes
+        disk_usage = f"Your current disk usage is {disk_used:.2f} GB out of {disk_total:.2f} GB."
+
+        return f"{cpu_info} {memory_usage} {disk_usage}"
+
+    except Exception as e:
+        return f"Sorry, I couldn't retrieve the system information. Error: {e}"
+def get_ai_response(user_input):
+    # Basic NLP-based responses
+    responses = {
+        "hello": "Hello! How can I help you today?",
+        "how are you": "I'm doing well, thank you for asking.",
+        "your name": "I'm MASH your virtual assistant created by Bo$$ .",
+        "bye": "Goodbye! Take care.",
+        "version": "VERSION MAB3CM",
+
+    }
+  # Check for health-related responses
+    health_response = get_health_response(user_input)
+    if health_response:
+        return health_response
     
-    # Return the processed result back to the frontend
-    return text
+    # Keyword detection for custom responses
+    for keyword in responses:
+        if keyword in user_input.lower():
+            return responses[keyword]
 
-# Function to perform speech recognition
-def recognize_speech():
-    # Use the default microphone as the audio source
+    # If no specific response, generate a generic one
+    return generate_generic_response()
+def repeat_user_input():
+    recognizer = sr.Recognizer()
+
     with sr.Microphone() as source:
-        print("Listening...")
+        print("Say something to copy...")
+        audio = recognizer.listen(source)
 
-        # Adjust for ambient noise levels
-        r.adjust_for_ambient_noise(source)
+    try:
+        user_input = recognizer.recognize_google(audio)
+        print(f"You: {user_input}")
+        speak_and_print(f"You said: {user_input}")
+        return user_input
 
-        # Capture the audio
-        audio = r.listen(source)
+   # except sr.UnknownValueError:
+       # speak_and_print("Sorry, I could not understand what you said.")
 
-        print("Recognizing...")
+    except sr.RequestError as e:
+        print(f"Error connecting to Google Speech Recognition service: {e}")
+        speak_and_print("I'm sorry, but there was an error connecting to the speech recognition service.")
 
-        try:
-            # Convert speech to text
-            text = r.recognize_google(audio)
-            text = text.lower() #to optimize the code
-            return text
-        except sr.UnknownValueError:
-            print("Speech recognition could not understand audio.")
-        except sr.RequestError as e:
-            print("Could not request results from Google Speech Recognition service; {0}".format(e))
+    return ""
 
-    # If an error occurred or no speech was recognized, return a keyword string to shutdown the AI
-    return "None"
+def monitor_battery():
+    battery = psutil.sensors_battery()
+    last_percent = battery.percent
 
-# Function to generate speech from text
-def speak_text(text):
+    while True:
+        battery = psutil.sensors_battery()
+        current_percent = battery.percent
+
+        if current_percent < last_percent:
+            message = f"Your battery percentage has decreased to {current_percent}%."
+            speak_and_print(message)
+            last_percent = current_percent
+
+        time.sleep(10)  # Check battery every minute
+def generate_generic_response():
+    generic_responses = [
+        "The best error message is the one that never shows up.",
+        "Code is like humor. When you have to explain it, it’s bad.",
+        "The only way to learn a new programming language is by writing programs in it.",
+        "Programming isn’t about what you know; it’s about what you can figure out.",
+        "Code is where the real magic happens.",
+        "A good programmer is someone who always looks both ways before crossing a one-way street.",
+        "The only way to do great work is to love what you do.",
+        "Your limitation—it's only your imagination.",
+        "Code is like a poem; it's meant to be read by humans.",
+        "Quality is not an act, it is a habit.",
+        "The best time to plant a tree was 20 years ago. The second best time is now.",
+        "The only place where success comes before work is in the dictionary.",
+        "The only true wisdom is in knowing you know nothing.",
+        "Success is not final, failure is not fatal: It is the courage to continue that counts.",
+        "Do not wait to strike till the iron is hot, but make it hot by striking.",
+        "Don't watch the clock; do what it does. Keep going.",
+        "Believe you can and you're halfway there.",
+        "The future belongs to those who believe in the beauty of their dreams.",
+        "The only limit to our realization of tomorrow will be our doubts of today.",
+        "If you want to lift yourself up, lift up someone else.",
+
+    ]
+    return random.choice(generic_responses)
+
+def speak(text):
+    engine = pyttsx3.init()
     engine.say(text)
     engine.runAndWait()
 
-# Function to handle math calculations
-def handle_math():
-    speak_text("Sure! You can provide a mathematical expression.")
-    user_input = recognize_speech()
-    while user_input != "stop":
-        try:
-            result = eval(user_input)
-            response = "The result is: " + str(result)
-        except Exception:
-            response = "Sorry, I couldn't compute the expression."
-
-        print(response)
-        speak_text(response)
-
-        speak_text("Please provide another mathematical expression or say 'stop' to pause math calculations.")
-        user_input = recognize_speech()
-
-    speak_text("Paused math calculations.")
-
-# Function to handle task processing
-def handle_tasks():
-    speak_text("Alright! I will process tasks.")
-    speak_text("Please provide a task to be completed or say 'stop' to pause tasks.")
-    user_input = recognize_speech()
-    is_on_youtube = False
-    while user_input != "stop":
-        if user_input.startswith("open"):
-            website = user_input.split("open", 1)[1].strip()
-            if website == "youtube":
-                url = "https://www.youtube.com"
-                webbrowser.get().open(url)
-                speak_text("Opening YouTube...")
-                is_on_youtube = True
-            elif website == "email":
-                url = "https://www.example.com/email"  # Replace with your desired email URL
-                webbrowser.get().open(url)
-                speak_text("Opening Email...")
-            else:
-                speak_text("Sorry, I don't know how to open that website.")
-        elif user_input.startswith("search"):
-            query = user_input.split("search", 1)[1].strip()
-            if is_on_youtube:
-                url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}"
-                webbrowser.get().open(url)
-                speak_text(f"Searching for {query} on YouTube...")
-            else:
-                speak_text("Sorry, you can only search on YouTube when you are on the YouTube website.")
-        else:
-            speak_text("Sorry, I couldn't understand the task.")
-
-        speak_text("Please provide another task or say 'stop' to pause tasks.")
-        user_input = recognize_speech()
-
-    speak_text("Paused task processing.")
-
-
-# Function to display a notification when the AI is activated
-def activation_notif():
-    n = ToastNotifier()
-    n.show_toast("MaSh", "MaSh is now activated and ready to work on your command", duration=10)
-
-# will be used later on.
-def deactivation_notif():
-    n = ToastNotifier()
-    n.show_toast("MaSh", "MaSh is now deactivated and unable to work until launched again", duration=10)
-
-
-# Main function
-def main():
-    starting = f"Hello, my name is {Name}! I can perform various tasks. Say 'math' for math calculations, 'speech' for regular speech processing, or 'task' to assign me a new task."
-    speak_text(starting)
-    print(starting)
-    running = False
-    while True:
-        if not running:
-
-            user_input = recognize_speech()
-            if user_input == "math":
-                running = True
-                handle_math()
-            elif user_input == "speech":
-                running = False
-                speak_text("Alright! I will continue processing speech input.")
-            elif user_input == "task":
-                running = False
-                handle_tasks()
-            elif user_input == "about":
-                running = False
-                desc_bot()
-            else:
-                speak_text("Sorry, I didn't understand. Please say 'math', 'speech', or 'task'.")
-
-# Run the main function
-if __name__ == "__main__":
-
-    user_input = recognize_speech()
-
-    if user_input == "mash":
-        activation_notif()
-        main()
-    elif (user_input == "None"):      # Must be optimised in next build
-        speak_text("Sorry, an error occured, shutting down!.")
-        deactivation_notif()
-    else:
-        speak_text("Sorry, I didn't understand. Please say 'MaSh' to activate me.")
-
+def speak_and_print(text):
+    print(f"MASH: {text}")
+    speak(text)
     
+# Function to get weather updates
+def get_weather_update():
+    # Code to fetch weather information from an API
+    # Example: weather_info = fetch_weather_info()
+    # Here, weather_info contains the weather details
+    weather_info = "Today's weather: Sunny, with a high of 25°C."
+    create_notification("Weather Update", weather_info)
+# health_responses.py
+def get_health_response(user_input):
+    health_responses = {
+        "headache": "To relieve a headache, you can try drinking plenty of water, getting some rest, or taking over-the-counter pain relievers.",
+        "cough": "For a persistent cough, consider drinking warm tea with honey, using a humidifier, or taking cough syrup.",
+        "fever": "If you have a fever, it's essential to rest, stay hydrated, and take fever-reducing medications as recommended by your doctor.",
+        "sore throat": "For a sore throat, you might find relief by gargling with warm saltwater, staying hydrated, and using throat lozenges.",
+        "fatigue": "If you're feeling fatigued, make sure to get enough sleep, eat a balanced diet, and engage in regular physical activity.",
+        "stomachache": "For a stomachache, consider avoiding heavy or spicy foods, drinking peppermint tea, and using a heating pad.",
+        "insomnia": "If you're having trouble sleeping, establish a regular sleep schedule, create a relaxing bedtime routine, and avoid stimulants before bedtime.",
+        # Add more health-related responses as needed
+    }
+
+    # Keyword detection for health responses
+    for keyword in health_responses:
+        if keyword in user_input.lower():
+            return health_responses[keyword]
+
+    # If no specific health response, return a generic message
+    return None
+
+
+casual_talks = [
+    ("How's the weather today?", [
+        "It's sunny outside!",
+        "It's a bit cloudy, but not too bad.",
+        "Looks like rain is on the way.",
+        "I heard it's going to be a hot day!",
+        "It's perfect weather for a picnic!"
+    ]),
+    ("What did you do over the weekend?", [
+        "I relaxed and caught up on some reading.",
+        "I went hiking with friends.",
+        "I watched a movie marathon.",
+        "I visited some family members.",
+        "I explored a new city."
+    ]),
+    ("Have you watched any good movies lately?", [
+        "Yes, I watched a comedy film that was really funny.",
+        "I saw a gripping thriller that kept me on the edge of my seat.",
+        "I watched a heartwarming drama that made me cry.",
+        "I enjoyed a classic movie from the 80s.",
+        "I watched a documentary that was really informative."
+    ]),
+    ("Do you have any plans for the evening?", [
+        "I'm thinking of going for a walk in the park.",
+        "I'm meeting up with friends for dinner.",
+        "I have a yoga class scheduled.",
+        "I'm staying in and catching up on some work.",
+        "I'm planning to try out a new recipe."
+    ]),
+    ("What's your favorite food?", [
+        "I love pizza! What about you?",
+        "I'm a big fan of sushi.",
+        "My favorite food is definitely pasta.",
+        "I can't resist a good burger.",
+        "I enjoy trying new dishes from different cuisines."
+    ]),
+    # Add more casual talks with their replies here
+]
+
+def get_random_casual_talk():
+    question, replies = random.choice(casual_talks)
+    return f"{question} {random.choice(replies)}"
+
+def listen_to_user():
+    recognizer = sr.Recognizer()
+
+    with sr.Microphone() as source:
+        print("Say something...")
+        audio = recognizer.listen(source)
+
+    try:
+        user_input = recognizer.recognize_google(audio)
+        print(f"You: {user_input}")
+
+        # Check for affirmative gestures
+        if re.match(r"^(can you|will you|could you|would you)", user_input.lower()):
+            response = "Yes, of course! "
+            response += process_user_query(user_input)
+            return response
+
+        # Check for the copy command
+        if "copy me" in user_input.lower():
+            repeat_user_input()
+
+       
+
+        # Check for appreciation keywords
+        appreciation_response = get_appreciation_response(user_input)
+        if appreciation_response:
+            return appreciation_response
+
+        # Process specific queries and trigger corresponding functions
+        return process_user_query(user_input)
+
+    except sr.UnknownValueError:
+        print("Sorry, I could not understand what you said.")
+    except sr.RequestError as e:
+        print(f"Error connecting to Google Speech Recognition service: {e}")
+        speak_and_print("I'm sorry, but there was an error connecting to the speech recognition service.")
+
+    return ""
+
+def welcome_message():
+    speak_and_print(random.choice(welcome_message1))
+    create_notification("MaSh","MaSh is now online & functioning")
+    
+def main():
+    try:
+        # Initialize pyttsx3 engine with a different voice
+        engine = change_voice()
+
+        # Deliver a welcome message with a notification
+        welcome_message()
+        create_notification("MaSh", "MaSh is now online & functioning")
+
+        while True:
+            # Listen to user input
+            user_input = listen_to_user()
+
+            # Process user input and generate response
+            response = process_user_query(user_input)
+
+            # Speak and print the response
+            speak_and_print(response)
+
+            # Check for weather update feature
+            if "weather" in user_input.lower():
+                get_weather_update()
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        speak_and_print("I'm sorry, but an unexpected error occurred. Please try again later.")
+    monitor_battery()
+
+
+if __name__ == "__main__":
+    main()
