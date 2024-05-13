@@ -7,6 +7,8 @@ r = sr.Recognizer()
 # Initialize the text-to-speech engine
 engine = pyttsx3.init()
 
+
+
 # Function to perform speech recognition
 def recognize_speech():
     # Use the default microphone as the audio source
