@@ -139,6 +139,7 @@ def get_ai_response(user_input):
 
     # If no specific response, generate a generic one
     return generate_generic_response()
+
 def repeat_user_input():
     recognizer = sr.Recognizer()
 
@@ -282,16 +283,19 @@ def get_random_casual_talk():
     question, replies = random.choice(casual_talks)
     return f"{question} {random.choice(replies)}"
 
+unheard_responces = ["\033[31mYour last command could\'t be heard...\033[0m", "\033[31mPlease say that again?\033[0m", "\033[31mPlease speak louder!\033[0m", "\033[31mSpeak clearly sir!\033[0m", "\033[31mPardon?\033[0m"]
+
 def listen_to_user():
     recognizer = sr.Recognizer()
 
     with sr.Microphone() as source:
-        print("Say something...")
+        print("Listening...")
         audio = recognizer.listen(source)
-
+    
     try:
+        print("Recognizing.....")
         user_input = recognizer.recognize_google(audio)
-        print(f"You: {user_input}")
+        print(f"You said: {user_input}")
 
         # Check for affirmative gestures
         if re.match(r"^(can you|will you|could you|would you)", user_input.lower()):
@@ -303,8 +307,6 @@ def listen_to_user():
         if "copy me" in user_input.lower():
             repeat_user_input()
 
-       
-
         # Check for appreciation keywords
         appreciation_response = get_appreciation_response(user_input)
         if appreciation_response:
@@ -312,14 +314,12 @@ def listen_to_user():
 
         # Process specific queries and trigger corresponding functions
         return process_user_query(user_input)
+    except Exception:
+        RandomResponce = unheard_responces[random.randint(0, len(unheard_responces)-1)]
+        print(RandomResponce)
+        #speak(RandomResponce)
+        return "None"
 
-    except sr.UnknownValueError:
-        print("Sorry, I could not understand what you said.")
-    except sr.RequestError as e:
-        print(f"Error connecting to Google Speech Recognition service: {e}")
-        speak_and_print("I'm sorry, but there was an error connecting to the speech recognition service.")
-
-    return ""
 
 def welcome_message():
     speak_and_print(random.choice(welcome_message1))
@@ -332,7 +332,6 @@ def main():
 
         # Deliver a welcome message with a notification
         welcome_message()
-        create_notification("MaSh", "MaSh is now online & functioning")
 
         while True:
             # Listen to user input
@@ -347,6 +346,12 @@ def main():
             # Check for weather update feature
             if "weather" in user_input.lower():
                 get_weather_update()
+            
+            elif 'sleep' in query or 'sleep now' in query or 'take a break' in query or 'rest now' in query or 'you can sleep now' in query or "keep quite" in query or 'rest' in query:
+                speak("Okay sir, don\'t forget to call me again if required.")
+                speak("Sleep mode activated...")
+                create_notification("MaSh","Sleep mode activated.")
+                break #for exiting command loop, wake up or shutdown now...
 
     except Exception as e:
         print(f"Unexpected error: {e}")
@@ -355,4 +360,52 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+
+    UnlockCounter = 0
+    speak("Hey there, My access is password protected to restrict any unknown guy to use me. ")
+    speak("If you're verified person then you probably be having the password, please write it down.")
+    
+    while UnlockCounter<3:
+        password = input("Enter the password: ")
+        if password=="test":
+            speak("Welcome back sir, initiating the start protocol")
+            UnlockCounter=3
+
+        else:
+            speak("You dumbass!! get the fuck out of here, don't do hit and trial to get my access")
+            speak("Don\'t you dare to open me back again until you have the password.")
+            UnlockCounter+=1
+            print("You have", 3-UnlockCounter, "attempt(s) remaining")
+    
+
+    while True:
+        speak("Initializing the workspace....")
+        speak("Successfully initiated, waiting for your orders to start... ")
+
+        user_input = listen_to_user()
+        permission = user_input.lower()
+        if ('wake up' in permission) or ('start' in permission) or ('work' in permission) or ('working' in permission) or ('workspace' in permission):
+            create_notification("MaSh","MaSh is now activated. waiting for orders to start")
+            main()
+        
+        elif ('goodbye' in permission) or ('shutdown' in permission) or ('shut' in permission) or ('down' in permission):
+           speak("Do You want me to shutdown sir")
+           query = user_input.lower()
+
+           if ('no' in query) or ('cancel' in query) or ('nah' in query):
+               speak("Process cancelled")
+
+           if ('yes' in query) or ('yep' in query) or ('shutdown' in query) or ('down' in query) or ('shut' in query):
+                
+                hour = int(datetime.datetime.now().hour)
+                if hour>=0 and hour<18:
+                    speak("Alright, Have a nice day ahead sir!")
+                    speak("Shutting down...")
+                    create_notification("MaSh","MaSh is now de-activated")
+                    exit()
+
+                elif hour>=18 and hour<24:
+                    speak("Ok, good night sir")
+                    speak("Shutting down...")
+                    create_notification("MaSh","MaSh is now deactivated")
+                    exit()
